@@ -4,9 +4,11 @@ node_modules/
 # Builds generados
 dist/
 
-# Variables de entorno — NUNCA subir a git (contienen las claves de Firebase)
+# Variables de entorno — ningún .env se versiona (convención estándar).
+# Los valores de deploy van en el panel de Vercel (Environment Variables).
 .env
 .env.local
+.env.production
 .env.*.local
 
 # Logs y archivos del sistema
