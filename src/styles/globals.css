@@ -1,0 +1,32 @@
+/* globals.css — Design system de NOTE (Tailwind v4, CSS-first).
+   @theme define los tokens: colores de marca, tipografía y sombras.
+   Cambiar un token aquí re-tematiza TODA la app — esa es la gracia. */
+@import "tailwindcss";
+
+@theme {
+  /* Tipografía: Inter (cargada en index.html), con fallback del sistema */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* Marca NOTE: azul profesional */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-900: #1e3a8a;
+
+  /* Superficie oscura (sidebar / login) */
+  --color-ink-800: #1e293b;
+  --color-ink-900: #0f172a;
+  --color-ink-950: #020617;
+}
+
+body {
+  @apply bg-gray-100 font-sans text-gray-900 antialiased;
+}
+
+/* Los números de montos se alinean en columnas (dígitos de ancho fijo) */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,23 @@
+# Dependencias (se regeneran con npm install)
+node_modules/
+
+# Builds generados
+dist/
+
+# Variables de entorno — NUNCA subir a git (contienen las claves de Firebase)
+.env
+.env.local
+.env.*.local
+
+# Logs y archivos del sistema
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Vercel (config local del CLI, no se versiona)
+.vercel/
