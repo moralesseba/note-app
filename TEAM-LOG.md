@@ -44,6 +44,10 @@ Bitácora compartida del equipo dev-team. Todo rol lee antes de actuar y escribe
 - **Proyecto:** note-app, ref `chzxuqnncfghqlnnoscd`, región sa-east-1, plan gratis $0/mes. SDK @supabase/supabase-js 2.110.0.
 - Aviso a roles: firebase.js eliminado; variables .env pasan a VITE_SUPABASE_URL + VITE_SUPABASE_PUBLISHABLE_KEY.
 
+### [2026-07-06] FASE 6b: Pagados salen de Préstamos → Historial
+- Feedback del usuario aplicado: LoansPage filtra activos; al marcar pagado la fila se mueve al Historial y aparece aviso verde con ↩ Deshacer inmediato (snackbar undo). Empty state diferenciado (sin préstamos vs. todos pagados).
+- Gates: build 501ms OK · 33/33 tests. Repo confirmado PÚBLICO por el usuario.
+
 ### [2026-07-06] FASE 6 COMPLETADA: Edición + deshacer pago — Gates
 - **Gate 1 código: APPROVE.** LoanForm generalizado (crear/editar con prop initial + key para remontar), setPaid bidireccional (undo > confirm), bug de "des-pagado silencioso" atrapado en self-review (toDb rellenaba pagado:false en updates — se excluye el campo).
 - **Gate 3 QA: PASS.** Build 990ms, 33/33 tests. RLS sin cambios (owner_update ya cubría edición).

@@ -14,8 +14,13 @@ export default function LoansPage() {
   const [prestamoEditar, setPrestamoEditar] = useState(null)
   const [prestamoMensaje, setPrestamoMensaje] = useState(null)
   const [errorAccion, setErrorAccion] = useState(null)
+  // Último préstamo marcado pagado: permite "Deshacer" sin ir al Historial
+  const [ultimoPagado, setUltimoPagado] = useState(null)
 
   if (loading) return <p className="text-gray-500">Cargando…</p>
+
+  // Esta página muestra solo el trabajo ACTIVO; los pagados viven en Historial
+  const activos = loans.filter((p) => !p.pagado)
 
   async function handleAdd(datos) {
     await addLoan(datos)
@@ -30,7 +35,17 @@ export default function LoansPage() {
   async function handlePagado(p) {
     try {
       setErrorAccion(null)
-      await setPaid(p.id, !p.pagado) // toggle: marcar o deshacer
+      await setPaid(p.id, true)
+      setUltimoPagado(p) // la fila se va a Historial; el aviso ofrece deshacer
+    } catch (err) {
+      setErrorAccion(err.message)
+    }
+  }
+
+  async function handleDeshacer() {
+    try {
+      await setPaid(ultimoPagado.id, false)
+      setUltimoPagado(null)
     } catch (err) {
       setErrorAccion(err.message)
     }
@@ -63,6 +78,23 @@ export default function LoansPage() {
       {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {errorAccion && <p className="rounded bg-red-50 p-3 text-sm text-red-700">{errorAccion}</p>}
 
+      {/* Aviso post-acción con rescate inmediato (patrón undo) */}
+      {ultimoPagado && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-800 ring-1 ring-green-600/20">
+          <span>
+            ✓ <strong>{ultimoPagado.prestatario}</strong> quedó pagado y se movió al Historial.
+          </span>
+          <div className="flex gap-3">
+            <button onClick={handleDeshacer} className="font-semibold text-green-700 underline hover:text-green-900">
+              ↩ Deshacer
+            </button>
+            <button onClick={() => setUltimoPagado(null)} aria-label="Cerrar aviso" className="text-green-600 hover:text-green-900">
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -79,7 +111,7 @@ export default function LoansPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {loans.map((p) => (
+              {activos.map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50">
                   <td className="px-3 py-3 font-medium">{p.prestatario}</td>
                   <td className="tnum px-3 py-3">{formatCLP(p.principal)}</td>
@@ -103,17 +135,18 @@ export default function LoansPage() {
                         ✏️ Editar
                       </Button>
                       <Button variant="secondary" onClick={() => handlePagado(p)}>
-                        {p.pagado ? '↩ Deshacer pago' : 'Marcar pagado'}
+                        Marcar pagado
                       </Button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {loans.length === 0 && (
+              {activos.length === 0 && (
                 <tr>
                   <td colSpan="8" className="px-3 py-8 text-center text-gray-500">
-                    Sin préstamos todavía. Crea el primero con "+ Nuevo préstamo",
-                    o importa tus datos iniciales desde el Dashboard.
+                    {loans.length === 0
+                      ? 'Sin préstamos todavía. Crea el primero con "+ Nuevo préstamo", o importa tus datos iniciales desde el Dashboard.'
+                      : 'No hay préstamos activos. Los pagados están en el Historial.'}
                   </td>
                 </tr>
               )}
