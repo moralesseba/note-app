@@ -44,6 +44,16 @@ Bitácora compartida del equipo dev-team. Todo rol lee antes de actuar y escribe
 - **Proyecto:** note-app, ref `chzxuqnncfghqlnnoscd`, región sa-east-1, plan gratis $0/mes. SDK @supabase/supabase-js 2.110.0.
 - Aviso a roles: firebase.js eliminado; variables .env pasan a VITE_SUPABASE_URL + VITE_SUPABASE_PUBLISHABLE_KEY.
 
+### [2026-07-06] FASE 6 COMPLETADA: Edición + deshacer pago — Gates
+- **Gate 1 código: APPROVE.** LoanForm generalizado (crear/editar con prop initial + key para remontar), setPaid bidireccional (undo > confirm), bug de "des-pagado silencioso" atrapado en self-review (toDb rellenaba pagado:false en updates — se excluye el campo).
+- **Gate 3 QA: PASS.** Build 990ms, 33/33 tests. RLS sin cambios (owner_update ya cubría edición).
+- Pendiente usuario: commit + push (con Vercel conectado al repo, el push publica solo).
+
+### [2026-07-06] FASE 5 EN CURSO: Repo público + deploy Vercel
+- Repo github.com/moralesseba/note-app (privado→público en curso). Commit inicial verificado: 41 archivos, .env.local correctamente excluido.
+- Preparación pública: LICENSE MIT, migraciones SQL en supabase/migrations/ (email del dueño parametrizable), README de portafolio, .env.production sacado del versionado (valores → panel de Vercel).
+- Falta: push de estos cambios, visibilidad pública, import en Vercel con 3 env vars, URL final, Site URL en Supabase Auth.
+
 ### [2026-07-06] FASE 4 COMPLETADA: Candado de dueño + rediseño — Gates
 - **Gate 2 seguridad: PASS.** Migración owner_lock_policies: is_app_owner() + políticas exigen uid dueño Y email del dueño (garantía en servidor). Advisor detectó SECURITY DEFINER innecesario → corregido a INVOKER + revoke anon (mínimo privilegio). Advisors: solo queda 1 WARN (leaked password protection — toggle manual del usuario en dashboard).
 - **Gate 1 código: APPROVE** · **Gate 3 QA: PASS** (build 945ms, 33/33 tests).

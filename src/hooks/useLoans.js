@@ -1,22 +1,16 @@
-// hooks/useLoans.js — Fuente de datos de préstamos (ahora con Supabase).
+// hooks/useLoans.js — Fuente de datos de préstamos (Supabase).
 //
-// La promesa de la fase anterior se cumple: las páginas siguen consumiendo
-// la MISMA interfaz; solo cambió la implementación interna.
-//   { loans, loading, error, addLoan, markPaid, importSeed }
+// Interfaz que consumen las páginas (no saben qué hay detrás):
+//   { loans, loading, error, addLoan, updateLoan, setPaid, importSeed }
 //
-// Dos implementaciones detrás de la misma interfaz:
-//   • Supabase configurado → tabla "loans" en Postgres (protegida por RLS)
-//   • Modo demo            → estado local en memoria (mismos métodos)
-//
-// Concepto: "capa de mapeo". La BD habla snake_case (convención SQL) y la
-// app camelCase (convención JS). Las funciones fromDb/toDb traducen en la
-// frontera — ninguna página conoce los nombres de columnas.
+// setPaid(id, true|false) reemplaza al antiguo markPaid: mismo mecanismo
+// en ambos sentidos → "deshacer pago" sale gratis (patrón undo > confirm).
 import { useCallback, useEffect, useState } from 'react'
 import { supabase, isSupabaseConfigured } from '../config/supabase.js'
 import { calcularInteres, calcularTotal } from '../utils/calculations.js'
 import { seedLoans } from '../data/seedLoans.js'
 
-// ── Mapeo BD ↔ App ────────────────────────────────────────────────────
+// ── Mapeo BD ↔ App (la BD habla snake_case, la app camelCase) ─────────
 function fromDb(row) {
   return {
     id: row.id,
@@ -45,7 +39,7 @@ function toDb(loan) {
   }
 }
 
-/** Completa interés y total a partir del principal (única fuente: calculations). */
+/** Completa interés y total desde el principal (única fuente: calculations). */
 function conMontos(datos) {
   return {
     ...datos,
@@ -62,7 +56,6 @@ export function useLoans() {
   // ── Lectura ─────────────────────────────────────────────────────────
   const fetchLoans = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      // Modo demo: los datos de ejemplo, en memoria
       setLoans(seedLoans)
       setLoading(false)
       return
@@ -84,7 +77,7 @@ export function useLoans() {
     fetchLoans()
   }, [fetchLoans])
 
-  // ── Alta de préstamo ────────────────────────────────────────────────
+  // ── Alta ────────────────────────────────────────────────────────────
   async function addLoan(datos) {
     const nuevo = conMontos(datos)
     if (!isSupabaseConfigured) {
@@ -103,18 +96,39 @@ export function useLoans() {
     return guardado
   }
 
-  // ── Marcar como pagado ──────────────────────────────────────────────
-  async function markPaid(id) {
+  // ── Edición (recalcula interés/total si cambió el principal) ────────
+  async function updateLoan(id, datos) {
+    const actualizado = conMontos(datos)
     if (!isSupabaseConfigured) {
-      setLoans((prev) => prev.map((p) => (p.id === id ? { ...p, pagado: true } : p)))
+      setLoans((prev) => prev.map((p) => (p.id === id ? { ...p, ...actualizado } : p)))
       return
     }
-    const { error: err } = await supabase.from('loans').update({ pagado: true }).eq('id', id)
+    // Importante: NO enviamos "pagado" en la edición — ese campo solo lo
+    // cambia setPaid. Si lo incluyéramos, toDb lo llenaría con false y
+    // editar un préstamo pagado lo "des-pagaría" en silencio (bug sutil).
+    const { pagado: _omitido, ...campos } = toDb(actualizado)
+    const { data, error: err } = await supabase
+      .from('loans')
+      .update(campos)
+      .eq('id', id)
+      .select()
+      .single()
     if (err) throw new Error('No se pudo actualizar: ' + err.message)
-    setLoans((prev) => prev.map((p) => (p.id === id ? { ...p, pagado: true } : p)))
+    setLoans((prev) => prev.map((p) => (p.id === id ? fromDb(data) : p)))
   }
 
-  // ── Importar los 4 préstamos iniciales (primera vez) ────────────────
+  // ── Pagado / deshacer pagado ────────────────────────────────────────
+  async function setPaid(id, pagado) {
+    if (!isSupabaseConfigured) {
+      setLoans((prev) => prev.map((p) => (p.id === id ? { ...p, pagado } : p)))
+      return
+    }
+    const { error: err } = await supabase.from('loans').update({ pagado }).eq('id', id)
+    if (err) throw new Error('No se pudo actualizar: ' + err.message)
+    setLoans((prev) => prev.map((p) => (p.id === id ? { ...p, pagado } : p)))
+  }
+
+  // ── Importar seed (primera vez) ─────────────────────────────────────
   async function importSeed() {
     if (!isSupabaseConfigured) {
       setLoans(seedLoans)
@@ -126,5 +140,5 @@ export function useLoans() {
     setLoans((prev) => [...prev, ...data.map(fromDb)])
   }
 
-  return { loans, loading, error, addLoan, markPaid, importSeed }
+  return { loans, loading, error, addLoan, updateLoan, setPaid, importSeed }
 }

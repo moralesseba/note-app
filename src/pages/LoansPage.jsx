@@ -1,46 +1,63 @@
-// pages/LoansPage.jsx — Tabla de préstamos + alta + marcar pagado.
-// El estado "mostrarForm" es UI pura (no negocio): vive aquí, no en el hook.
+// pages/LoansPage.jsx — Tabla de préstamos: alta, edición, pagado/deshacer, mensajes.
+// UX: sin "¿estás seguro?" — el error se corrige con Deshacer (undo > confirm).
 import { useState } from 'react'
 import { useLoans } from '../hooks/useLoans.js'
 import { estadoPrestamo } from '../utils/calculations.js'
 import { formatCLP, formatFecha, formatVencimiento } from '../utils/formatting.js'
 import { Card, Badge, Button } from '../components/common'
-import NewLoanForm from '../components/loans/NewLoanForm.jsx'
+import LoanForm from '../components/loans/LoanForm.jsx'
 import LoanMessageModal from '../components/loans/LoanMessageModal.jsx'
 
 export default function LoansPage() {
-  const { loans, loading, error, addLoan, markPaid } = useLoans()
+  const { loans, loading, error, addLoan, updateLoan, setPaid } = useLoans()
   const [mostrarForm, setMostrarForm] = useState(false)
-  const [errorAccion, setErrorAccion] = useState(null)
+  const [prestamoEditar, setPrestamoEditar] = useState(null)
   const [prestamoMensaje, setPrestamoMensaje] = useState(null)
+  const [errorAccion, setErrorAccion] = useState(null)
 
   if (loading) return <p className="text-gray-500">Cargando…</p>
 
   async function handleAdd(datos) {
-    await addLoan(datos) // si falla, NewLoanForm muestra el error
+    await addLoan(datos)
     setMostrarForm(false)
   }
 
-  async function handlePagado(id) {
+  async function handleEdit(datos) {
+    await updateLoan(prestamoEditar.id, datos)
+    setPrestamoEditar(null)
+  }
+
+  async function handlePagado(p) {
     try {
       setErrorAccion(null)
-      await markPaid(id)
+      await setPaid(p.id, !p.pagado) // toggle: marcar o deshacer
     } catch (err) {
       setErrorAccion(err.message)
     }
   }
 
+  const formVisible = mostrarForm || prestamoEditar !== null
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Préstamos</h1>
-        {!mostrarForm && (
+        {!formVisible && (
           <Button onClick={() => setMostrarForm(true)}>+ Nuevo préstamo</Button>
         )}
       </div>
 
       {mostrarForm && (
-        <NewLoanForm onSubmit={handleAdd} onCancel={() => setMostrarForm(false)} />
+        <LoanForm onSubmit={handleAdd} onCancel={() => setMostrarForm(false)} />
+      )}
+
+      {prestamoEditar && (
+        <LoanForm
+          key={prestamoEditar.id} /* key: React remonta el form al cambiar de préstamo */
+          initial={prestamoEditar}
+          onSubmit={handleEdit}
+          onCancel={() => setPrestamoEditar(null)}
+        />
       )}
 
       {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>}
@@ -65,9 +82,9 @@ export default function LoansPage() {
               {loans.map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50">
                   <td className="px-3 py-3 font-medium">{p.prestatario}</td>
-                  <td className="px-3 py-3">{formatCLP(p.principal)}</td>
-                  <td className="px-3 py-3 text-gray-500">{formatCLP(p.interes)}</td>
-                  <td className="px-3 py-3 font-semibold">{formatCLP(p.total)}</td>
+                  <td className="tnum px-3 py-3">{formatCLP(p.principal)}</td>
+                  <td className="tnum px-3 py-3 text-gray-500">{formatCLP(p.interes)}</td>
+                  <td className="tnum px-3 py-3 font-semibold">{formatCLP(p.total)}</td>
                   <td className="px-3 py-3">{formatFecha(p.fechaPrestamo)}</td>
                   <td className="px-3 py-3">{formatVencimiento(p.vencimiento, p.horaLimite)}</td>
                   <td className="px-3 py-3"><Badge estado={estadoPrestamo(p)} /></td>
@@ -76,11 +93,18 @@ export default function LoansPage() {
                       <Button variant="secondary" onClick={() => setPrestamoMensaje(p)}>
                         💬 Mensaje
                       </Button>
-                      {!p.pagado && (
-                        <Button variant="secondary" onClick={() => handlePagado(p.id)}>
-                          Marcar pagado
-                        </Button>
-                      )}
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setMostrarForm(false)
+                          setPrestamoEditar(p)
+                        }}
+                      >
+                        ✏️ Editar
+                      </Button>
+                      <Button variant="secondary" onClick={() => handlePagado(p)}>
+                        {p.pagado ? '↩ Deshacer pago' : 'Marcar pagado'}
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -98,7 +122,6 @@ export default function LoansPage() {
         </div>
       </Card>
 
-      {/* El modal se monta solo cuando hay un préstamo seleccionado */}
       {prestamoMensaje && (
         <LoanMessageModal
           prestamo={prestamoMensaje}

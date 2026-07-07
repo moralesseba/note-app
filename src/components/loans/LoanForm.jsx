@@ -1,10 +1,8 @@
-// components/loans/NewLoanForm.jsx — Alta de préstamo.
+// components/loans/LoanForm.jsx — Formulario de préstamo (crear Y editar).
 //
-// Conceptos que muestra este componente:
-//  • "Controlled inputs": el estado de React es la fuente de verdad del form
-//  • Validación en la UI con la MISMA función del negocio (validarMonto)
-//    que también valida la BD (constraint check) — defensa en capas
-//  • Vista previa derivada: interés/total/vencimiento se calculan en vivo
+// Refactor de NewLoanForm: un solo componente para ambos casos.
+// La prop "initial" decide el modo: null → crear · préstamo → editar.
+// Patrón: en vez de duplicar formularios, se parametriza el existente.
 import { useState } from 'react'
 import {
   validarMonto,
@@ -20,11 +18,12 @@ const hoyISO = () => {
   return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-${String(h.getDate()).padStart(2, '0')}`
 }
 
-export default function NewLoanForm({ onSubmit, onCancel }) {
-  const [prestatario, setPrestatario] = useState('')
-  const [monto, setMonto] = useState('')
-  const [fechaPrestamo, setFechaPrestamo] = useState(hoyISO())
-  const [conHora, setConHora] = useState(true)
+export default function LoanForm({ initial = null, onSubmit, onCancel }) {
+  const editando = initial !== null
+  const [prestatario, setPrestatario] = useState(initial?.prestatario ?? '')
+  const [monto, setMonto] = useState(initial ? String(initial.principal) : '')
+  const [fechaPrestamo, setFechaPrestamo] = useState(initial?.fechaPrestamo ?? hoyISO())
+  const [conHora, setConHora] = useState(initial ? Boolean(initial.horaLimite) : true)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
 
@@ -33,7 +32,7 @@ export default function NewLoanForm({ onSubmit, onCancel }) {
   const vencimiento = fechaPrestamo ? calcularVencimiento(fechaPrestamo) : null
 
   async function handleSubmit(e) {
-    e.preventDefault() // evita el reload de página del submit HTML clásico
+    e.preventDefault()
     if (!prestatario.trim() || !montoValido.valido || !fechaPrestamo) return
     setEnviando(true)
     setError(null)
@@ -45,10 +44,11 @@ export default function NewLoanForm({ onSubmit, onCancel }) {
         vencimiento,
         horaLimite: conHora ? '12:00 p.m.' : null,
       })
-      // Limpiar el formulario tras guardar
-      setPrestatario('')
-      setMonto('')
-      setFechaPrestamo(hoyISO())
+      if (!editando) {
+        setPrestatario('')
+        setMonto('')
+        setFechaPrestamo(hoyISO())
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -57,7 +57,7 @@ export default function NewLoanForm({ onSubmit, onCancel }) {
   }
 
   return (
-    <Card title="Nuevo préstamo">
+    <Card title={editando ? `Editar préstamo — ${initial.prestatario}` : 'Nuevo préstamo'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
@@ -102,7 +102,7 @@ export default function NewLoanForm({ onSubmit, onCancel }) {
           </div>
         </div>
 
-        {/* Vista previa en vivo: se recalcula en cada render */}
+        {/* Vista previa derivada: si cambias monto o fecha, se recalcula sola */}
         {montoValido.valido && vencimiento && (
           <div className="rounded-lg bg-brand-50 p-3 text-sm text-brand-900">
             Interés (20%): <strong>{formatCLP(calcularInteres(montoNum))}</strong>
@@ -115,7 +115,7 @@ export default function NewLoanForm({ onSubmit, onCancel }) {
 
         <div className="flex gap-3">
           <Button type="submit" disabled={enviando || !montoValido.valido || !prestatario.trim()}>
-            {enviando ? 'Guardando…' : 'Guardar préstamo'}
+            {enviando ? 'Guardando…' : editando ? 'Guardar cambios' : 'Guardar préstamo'}
           </Button>
           <Button type="button" variant="secondary" onClick={onCancel}>
             Cancelar
